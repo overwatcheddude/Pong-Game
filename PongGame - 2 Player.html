@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<head>
+<style>
+canvas {
+    position:fixed;
+    left:0;
+    top:0;
+    width:100%;
+    height:100%;
+}
+</style>
+</head>
+    <body>
+        <canvas id="canvas1" tabindex="0" style="border:1px solid #000000;">
+        </canvas>
+        <script>
+			//Default canvas code.
+            var canvas = document.getElementById("canvas1");
+            var ctx = canvas.getContext("2d");
+            var requestAnimationFrame = window.requestAnimationFrame ||
+                                        window.mozRequestAnimationFrame ||
+                                        window.webkitRequestAnimationFrame ||
+                                        window.msRequestAnimationFrame;
+			
+			//Sets the canas to fullscren.
+			canvas.width = 800;
+			canvas.height = 400;
+			
+			//Audio declaration
+			var blip = [];
+			for (i = 1; i <= 7; i++)
+			{
+				blip[i] = new Audio();
+				blip[i].src = 'blip' + [i] + '.mp3';
+			}
+			
+			//Seperator attributes
+			var sepWidth = 5;
+			var sepHeight = 10;
+			var sepColor = "white";
+			var sepX = (canvas.width/2) - (sepWidth/2);
+			var sepY = 0;
+			
+			//Shared players attributes
+			var barWidth = 10;
+			var barHeight = 100;
+			var barColor = "white";
+			var barSpeed = 0;
+			
+			//First player position.
+			var player1BarX = 0;
+            var player1BarY = (canvas.height / 2) - (barHeight / 2);
+			
+			//Second player position.
+			var player2BarX = canvas.width - barWidth;
+            var player2BarY = (canvas.height / 2) - (barHeight / 2);
+			
+			//Level attribute
+			var levelFont = "25px Arial";
+			var levelX = 0;
+			var levelY = canvas.height;
+			var level = 1;
+			
+			//Shared score attribute
+			var scoreFont = "50px Arial";
+			var scoreY = 50;
+			
+			//Player 1 score
+			var player1Score = 0;
+			var player1ScoreX = sepX - 75;
+			
+			//Player 2 score
+			var player2Score = 0;
+			var player2ScoreX = sepX + 50;
+			
+			//Score conditions
+			var scoreWin = 3;
+			var scoreLose = 3;
+			
+			//Ball attributes
+			var ballX = canvas.width/2;
+			var ballY = canvas.height/2;
+			var ballRad = 7.5;
+			var ballColor = "white";
+			var ballSpeed = 4;
+			
+			//Ball movements
+			var goDown = false;
+			var goUp = false;
+			var goRight = true;
+			var goLeft = false;
+			
+			//Boolean value to disable AI if a human player is present.
+			var player2Present = false;
+			
+			//The delay time is in milliseconds.
+            var delayBetweenFrames = 0;  
+			
+			//Stores the keystates
+			var keys = [];
+			
+			//Event listener for multiple keys.
+            document.body.addEventListener("keydown", function (e) {
+			keys[e.keyCode] = true;
+			});
+			document.body.addEventListener("keyup", function (e) {
+			keys[e.keyCode] = false;
+			});
+			
+			function aiMovement()
+			{
+				if (!player2Present)
+				{
+					if (ballY > player2BarY + barHeight)
+					{
+						player2BarY++;
+					}
+					else if (ballY < player2BarY)
+					{
+						player2BarY--;
+					}
+				}
+			}
+			
+			function getDistance(barX, barY) 
+			{
+				//Collision detection
+				if (barX < ballX + ballRad
+				&& barX + barWidth > ballX 
+				&& barY < ballY + ballRad 
+				&& barY + barHeight > ballY)
+				{
+					return true;
+				}
+            }
+			
+            function barMovement()
+			{
+				//S key
+				if (keys[83])
+				{
+					barLimitCheck(player1BarY, 83);
+					player1BarY += barSpeed;
+				}
+				//W key
+				if (keys[87])
+				{
+					barLimitCheck(player1BarY, 87);
+					player1BarY -= barSpeed;
+				}
+				//Down arrow
+				if (keys[40])
+				{
+					player2Present = true;
+					barLimitCheck(player2BarY, 40);
+					player2BarY += barSpeed;
+				}
+				//Up arrow
+				if (keys[38])
+				{
+					player2Present = true;
+					barLimitCheck(player2BarY, 38);
+					player2BarY -= barSpeed;
+				}
+				if (keys[187])
+				{
+					ballSpeed += 0.25;
+				}
+				if (keys[189])
+				{
+					ballSpeed -= 0.25;
+				}
+            }
+			
+			function barLimitCheck(barY, keyInput)
+			{
+				//If the bar reaches the canvas limit, then stop it from going outside.
+				if (barY >= (canvas.height - barHeight) && (keyInput == 40 || keyInput == 83))
+				{
+					barSpeed = 0;
+				}
+				else if (barY <= 0 && (keyInput == 38 || keyInput == 87))
+				{
+					barSpeed = 0;
+				}
+				else
+				{
+					barSpeed = 4;
+				}
+				return barSpeed;
+			}
+			
+			function drawRectangle(x, y, width, height, color)
+			{
+				ctx.fillStyle = color;
+				ctx.fillRect(x, y, width, height);
+			}
+			
+			function drawCircle(x, y, radius, color)
+			{
+				ctx.beginPath();
+                ctx.arc(x, y, radius, 0, 2 * Math.PI);
+				ctx.fillStyle = color;
+                ctx.fill();
+			}
+			
+			function drawText(font, text, x, y)
+			{
+				ctx.font = font;
+				ctx.fillText(text, x, y);
+			}
+			
+			function drawSeperator()
+			{
+				while (sepY < canvas.height)
+				{
+					drawRectangle(sepX, sepY, sepWidth, sepHeight, sepColor);
+					sepY += 20;
+				}
+				
+				//If the sepeator reaches canvas limit, then its Y will be reset to 0 so it can continue drawing the seperator.
+				if (sepY >= canvas.height)
+				{
+					sepY = 0;
+				}
+			}
+			
+			function resetBall()
+			{
+				ballX = canvas.width/2;
+				ballY = canvas.height/2;
+			}
+			
+			function ballMovement()
+			{
+				if (goDown)
+				{
+					ballY += ballSpeed;
+				}
+				if (goUp)
+				{
+					ballY -= ballSpeed;
+				}
+				if (goRight)
+				{
+					ballX += ballSpeed;
+				}
+				if (goLeft)
+				{
+					ballX -= ballSpeed;
+				}
+				if (ballY >= canvas.height)
+				{
+					blip[3].play();
+					goUp = true;
+					goDown = false;
+				}
+				if (ballY <= 0)
+				{
+					blip[4].play();
+					goUp = false;
+					goDown = true;
+				}
+			}
+			
+			function hitReaction(playerNum)
+			{
+				if (playerNum == 1)
+				{
+					goLeft = false;
+					goRight = true;
+					blip[1].play();
+				}
+				else
+				{
+					goLeft = true;
+					goRight = false;
+					blip[2].play();
+				}
+				
+				if (Math.random() <= 0.33)
+				{
+					goUp = true;
+					goDown = false;
+				}
+				else if (Math.random() >= 0.66)
+				{
+					goUp = false;
+					goDown = true;
+				}
+				else
+				{
+					goUp = false;
+					goDown = false;
+				}
+			}
+			
+			function goalDetection()
+			{
+				if (ballX >= canvas.width)
+				{
+					blip[5].play();
+					player1Score++;
+					resetBall();
+					goRight = false;
+					goLeft = true;
+				}
+				
+				if (ballX <= 0)
+				{
+					blip[5].play();
+					player2Score++;
+					resetBall();
+					goRight = true;
+					goLeft = false;
+				}
+			}
+			
+			function winLevel()
+			{
+				blip[6].play();
+				level++;
+				ballSpeed += 0.25;
+				scoreWin++;
+				scoreLose--;
+				barHeight -= 20;
+				player1Score = 0;
+				player2Score = 0;
+			}
+			
+			function loseLevel(gameComplete)
+			{
+				if (gameComplete == 1)
+				{
+					blip[6].play();
+					alert("You have completed the game!");
+				}
+				else
+				{
+					blip[7].play();
+					alert("Game over!");
+				}
+				
+				//Resets the game stats.
+				level = 1;
+				ballSpeed = 4;
+				scoreWin = 3;
+				scoreLose = 3;
+				barHeight = 100;
+				player1Score = 0;
+				player2Score = 0;
+			}
+			
+			function checkScore()
+			{
+				if (level == 1 && player1Score == 3)
+				{
+					winLevel();
+				}
+				if (level == 1 && player2Score == 3)
+				{
+					loseLevel();
+				}
+				if (level == 2 && player1Score == 4)
+				{
+					winLevel();
+				}
+				if (level == 2 && player2Score == 2)
+				{
+					loseLevel();
+				}
+				if (level == 3 && player1Score == 5)
+				{
+					//If the player completes the game, the game will reset.
+					loseLevel(1);
+				}
+				if (level == 3 && player2Score == 1)
+				{
+					loseLevel();
+				}
+			}
+			
+            //Declare the animate() function.
+            function animate() 
+			{         
+                //Use the setTimeout to do the animation between frame using the delayBetweenFrames.
+                setTimeout(function() 
+				{
+					//Clears the canvas.
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+				
+                    //Animation code goes into this anonymous function handler.
+                    requestAnimationFrame(animate);
+					
+					//Draws the black background.
+					drawRectangle(0, 0, canvas.width, canvas.height, "black");
+					
+					//Draws the seperator.
+					drawSeperator();
+					
+					//Moves the ball.
+					ballMovement();
+					
+					//Draws the ball.
+					drawCircle(ballX, ballY, ballRad, ballColor);
+					
+					//Moves the player bars if keys are pressed.
+					barMovement();
+					
+					//Moves the bar if no player is present
+					aiMovement();
+					
+					//Detects goals
+					goalDetection();
+					
+                    //Draws the first player.
+                    drawRectangle(player1BarX, player1BarY, barWidth, barHeight, barColor);
+					
+					//Draws the second player.
+                    drawRectangle(player2BarX, player2BarY, barWidth, barHeight, barColor);
+					
+					//Draws 1st player score.
+					drawText(scoreFont, player1Score, player1ScoreX, scoreY);
+					
+					//Draws 2nd player score.
+					drawText(scoreFont, player2Score, player2ScoreX, scoreY);
+					
+					//Draws the level number.
+					drawText(levelFont, "Level: " + level, levelX, levelY);
+					
+					//If player 2 not present, then do not check the score of the players.
+					if (!player2Present)
+					{
+						checkScore();
+					}
+					
+					//If the ball hits the bar
+					if (getDistance(player1BarX, player1BarY)) 
+					{
+						hitReaction(1);
+					}
+					if (getDistance(player2BarX, player2BarY))
+					{
+						hitReaction(2);
+					}
+					
+                }, delayBetweenFrames);
+            }
+			
+            //Calls the animate() function.
+            animate();
+        </script>
+    </body>        
+</html>
